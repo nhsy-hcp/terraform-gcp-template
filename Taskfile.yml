@@ -1,0 +1,68 @@
+# https://taskfile.dev
+
+version: '3'
+
+dotenv: [".env"]
+
+tasks:
+
+  gcp-login:
+    cmds:
+      - gcloud auth login
+      - gcloud auth application-default login
+    silent: true
+
+  gcp-project:
+    cmds:
+      - gcloud config set project $GCP_PROJECT_ID
+      - gcloud auth application-default set-quota-project $GCP_PROJECT_ID
+      - gcloud config set compute/region $GCP_REGION
+      - gcloud config list
+
+  pre-reqs:
+    cmds:
+      - ./scripts/bootstrap.sh
+
+  tf-fmt:
+    cmds:
+      - terraform fmt -recursive
+    silent: true
+
+  bootstrap-init:
+    dir: ./bootstrap
+    cmds:
+      - terraform init -backend-config="bucket=terraform-state-$GCP_PROJECT_ID" -backend-config="prefix=tfstate"
+
+  bootstrap-plan:
+    dir: ./bootstrap
+    cmds:
+      - task: bootstrap-init
+      - terraform plan
+
+  bootstrap-apply:
+    dir: ./bootstrap
+    cmds:
+      - terraform apply
+    silent: true
+
+  bootstrap-destroy:
+    dir: ./bootstrap
+    cmds:
+      - terraform destroy
+    silent: true
+
+  tf-init:
+    cmds:
+      - task: tf-fmt
+      - terraform init
+    silent: true
+
+  tf-plan:
+    cmds:
+      - task: tf-init
+      - terraform plan
+    silent: true
+
+  tf-apply:
+    cmds:
+      - terraform apply -auto-approve
